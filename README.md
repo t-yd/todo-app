@@ -9,6 +9,7 @@
 - **タスク管理**: プロジェクト別のタスク管理（作成、編集、削除、完了状態の切り替え）
 - **フィルタリング**: プロジェクト別表示、完了済みタスクの表示/非表示
 - **レスポンシブデザイン**: モバイルフレンドリーなUI
+- **自動テスト**: GitHub Actionsによる継続的インテグレーション
 
 ## 🛠️ 技術スタック
 
@@ -25,22 +26,30 @@
 - **Axios**: HTTP クライアント
 - **CSS3**: スタイリング
 
-### インフラ
+### インフラ・CI/CD
 - **Docker**: コンテナ化
 - **Docker Compose**: マルチコンテナ管理
+- **GitHub Actions**: 継続的インテグレーション・デプロイメント
+- **pytest**: バックエンドテストフレームワーク
+- **Jest**: フロントエンドテストフレームワーク
 
 ## 📁 プロジェクト構造
 
 ```
 todo-app/
-├── backend/                 # FastAPI バックエンド
+├── .github/
+│   └── workflows/          # GitHub Actions ワークフロー
+│       ├── ci.yml          # メインCI/CDパイプライン
+│       └── pr-check.yml    # プルリクエスト用軽量チェック
+├── backend/                # FastAPI バックエンド
 │   ├── main.py             # メインアプリケーション
 │   ├── database.py         # データベース設定とモデル
 │   ├── auth.py             # 認証機能
 │   ├── requirements.txt    # Python依存関係
 │   ├── test_main.py        # ユニットテスト
 │   ├── simple_test.py      # APIテスト
-│   └── pytest.ini         # pytest設定
+│   ├── pytest.ini         # pytest設定
+│   └── .flake8            # Python linting設定
 ├── frontend/               # React フロントエンド
 │   ├── src/
 │   │   ├── App.tsx         # メインアプリケーション
@@ -50,8 +59,9 @@ todo-app/
 │   │   └── App.test.tsx    # テストファイル
 │   ├── package.json        # Node.js依存関係
 │   └── public/             # 静的ファイル
-├── docker-compose.yml      # Docker Compose設定
-├── run_tests.sh           # テスト実行スクリプト
+├── docker-compose.yml      # 開発用Docker Compose設定
+├── docker-compose.ci.yml   # CI用Docker Compose設定
+├── run_tests.sh           # ローカルテスト実行スクリプト
 └── README.md              # このファイル
 ```
 
@@ -79,7 +89,7 @@ docker-compose up -d
 
 ## 🧪 テスト
 
-### 全テストの実行
+### ローカルでの全テスト実行
 ```bash
 ./run_tests.sh
 ```
@@ -100,6 +110,32 @@ docker-compose exec backend python -m pytest test_main.py -v
 ```bash
 docker-compose exec backend python simple_test.py
 ```
+
+### GitHub Actions 自動テスト
+
+このプロジェクトでは、GitHub Actionsを使用した自動テストが設定されています：
+
+#### メインCI/CDパイプライン (`.github/workflows/ci.yml`)
+- **トリガー**: `main`、`develop`ブランチへのプッシュ・プルリクエスト
+- **実行内容**:
+  - 🧪 **テストジョブ**: 全テスト（フロントエンド、バックエンドユニット、API）
+  - 🔍 **リントジョブ**: コード品質チェック（ESLint、flake8）
+  - 🔒 **セキュリティジョブ**: 脆弱性スキャン（Trivy）
+  - 🏗️ **ビルドジョブ**: Dockerイメージビルド（mainブランチのみ）
+
+#### プルリクエスト軽量チェック (`.github/workflows/pr-check.yml`)
+- **トリガー**: プルリクエスト作成・更新時
+- **実行内容**:
+  - TypeScriptコンパイルチェック
+  - ESLintによるコード品質チェック
+  - Pythonリンティング
+  - Dockerビルド確認
+  - 結果をPRにコメント
+
+#### テスト結果の確認
+- GitHubリポジトリの「Actions」タブで実行状況を確認
+- プルリクエストには自動的にテスト結果がコメントされます
+- カバレッジレポートはCodecovにアップロード（設定済み）
 
 ### テスト内容
 - **フロントエンド**: Reactコンポーネントのレンダリングテスト（1件）
