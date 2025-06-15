@@ -286,6 +286,25 @@
   gap: 1rem;
 }
 
+.todo-edit-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.todo-edit-fields .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.todo-edit-fields label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #555;
+}
+
 .todo-title-input, .todo-description-input {
   padding: 0.5rem;
   border: 1px solid #ddd;
@@ -329,6 +348,10 @@
   }
   
   .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .todo-edit-fields {
     grid-template-columns: 1fr;
   }
   
