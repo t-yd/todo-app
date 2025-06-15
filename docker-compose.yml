@@ -1,19 +1,57 @@
 version: '3.8'
 
 services:
+  # MySQL データベース（開発環境用）
+  mysql:
+    image: mysql:8.0
+    container_name: todoapp-mysql-dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: todoapp
+      MYSQL_USER: todoapp
+      MYSQL_PASSWORD: todoapp_password
+      MYSQL_ROOT_HOST: '%'
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --skip-name-resolve
+      --bind-address=0.0.0.0
+      --host-cache-size=0
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
+      timeout: 20s
+      retries: 10
+
   backend:
     build: ./backend
+    container_name: todoapp-backend-dev
+    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=sqlite:///./todos.db
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=todoapp
+      - MYSQL_USER=todoapp
+      - MYSQL_PASSWORD=todoapp_password
     volumes:
       - ./backend:/app
-      - backend_data:/app/data
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      mysql:
+        condition: service_healthy
 
   frontend:
     build: ./frontend
+    container_name: todoapp-frontend-dev
+    restart: unless-stopped
     ports:
       - "3000:3000"
     volumes:
@@ -21,6 +59,8 @@ services:
       - /app/node_modules
     environment:
       - REACT_APP_API_URL=http://localhost:8000
+    depends_on:
+      - backend
 
 volumes:
-  backend_data: 
+  mysql_data: 
