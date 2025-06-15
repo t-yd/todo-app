@@ -1,7 +1,5 @@
 # Todo アプリケーション
 
-TypeScript（React）とPython（FastAPI）で構築されたモダンなタスク管理アプリケーション
-
 ## 🚀 特徴
 
 - ✅ タスクの作成、編集、削除
@@ -36,16 +34,16 @@ TypeScript（React）とPython（FastAPI）で構築されたモダンなタス�
 - Docker Compose
 
 ### 1. リポジトリをクローン
-\`\`\`bash
+```bash
 git clone <repository-url>
 cd Todo-application
-\`\`\`
+```
 
 ### 2. アプリケーションを起動
-\`\`\`bash
+```bash
 # Docker Composeでフロントエンドとバックエンドを同時に起動
 docker-compose up --build
-\`\`\`
+```
 
 初回起動時は依存関係のインストールとイメージのビルドが行われるため、数分かかる場合があります。
 
@@ -58,10 +56,10 @@ docker-compose up --build
 - **APIドキュメント（Swagger）**: http://localhost:8000/docs
 
 ### 4. 停止方法
-\`\`\`bash
+```bash
 # アプリケーションを停止
 docker-compose down
-\`\`\`
+```
 
 ## 🎯 使用方法
 
@@ -80,7 +78,7 @@ docker-compose down
 
 ## 🏗 プロジェクト構造
 
-\`\`\`
+```
 Todo-application/
 ├── docker-compose.yml      # Docker Compose設定
 ├── backend/               # バックエンド（FastAPI）
@@ -97,39 +95,25 @@ Todo-application/
         ├── services/     # API通信
         ├── types/        # TypeScript型定義
         └── App.tsx       # メインアプリケーション
-\`\`\`
+```
 
 ## 🐛 トラブルシューティング
 
 ### ポートが既に使用されている場合
-\`\`\`bash
+```bash
 # 使用中のポートを確認
 lsof -i :3000
 lsof -i :8000
 
 # 必要に応じてプロセスを停止
-\`\`\`
+```
 
 ### Docker関連の問題
-\`\`\`bash
+```bash
 # Dockerイメージとコンテナをクリーンアップ
 docker-compose down --volumes --remove-orphans
 docker system prune -f
 
 # 再度ビルドして起動
 docker-compose up --build
-\`\`\`
-
-## 📝 開発について
-
-このプロジェクトは開発・学習用途で作成されています。本格的な本番環境での使用を想定する場合は、以下の追加実装を検討してください：
-
-- ユーザー認証・認可機能
-- 本格的なデータベース（PostgreSQL等）への移行
-- セキュリティ強化
-- パフォーマンス最適化
-- テストの追加
-
-## 📄 ライセンス
-
-このプロジェクトはMITライセンスの下で公開されています。 
+```
