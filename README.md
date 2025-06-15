@@ -1,13 +1,27 @@
 # Todo アプリケーション
 
+マルチユーザー対応のタスク管理アプリケーション
+
 ## 🚀 特徴
 
+### 🔐 ユーザー認証・認可
+- ✅ ユーザー登録・ログイン機能
+- 🔒 JWT認証によるセキュアなAPI保護
+- 👤 ユーザー別データ分離（自分のデータのみアクセス可能）
+- 🛡️ bcryptによるパスワードハッシュ化
+
+### 📁 プロジェクト管理
+- ✅ プロジェクトの作成、編集、削除
+- 🎨 プロジェクトカラー設定
+- 📂 デフォルトプロジェクト（Inbox）自動作成
+- 🔒 ユーザー別プロジェクト管理
+
+### 📝 タスク管理
 - ✅ タスクの作成、編集、削除
 - 🔄 タスクの完了/未完了の切り替え
-- 📂 プロジェクト（カテゴリ）別の管理
 - 📅 期限設定機能
 - 🎯 優先度設定（低・中・高）
-- 🔍 フィルタリング機能
+- 🔍 プロジェクト別フィルタリング
 - 📱 レスポンシブデザイン
 
 ## 🛠 技術スタック
@@ -19,6 +33,11 @@
 ### データベース
 - **MySQL 8.0** (開発環境)
 
+### 認証・セキュリティ
+- **JWT** (JSON Web Token)
+- **bcrypt** (パスワードハッシュ化)
+- **python-jose** (JWT処理)
+
 ### インフラ
 - **Docker** & **Docker Compose**
 
@@ -26,7 +45,26 @@
 
 ### 開発環境
 ```
-Frontend (React) ←→ Backend (FastAPI) ←→ MySQL
+Frontend (React) ←→ Backend (FastAPI + JWT Auth) ←→ MySQL
+```
+
+### データベース構造
+```
+users (ユーザー情報)
+├── id, username, email
+├── hashed_password
+└── is_active, created_at, updated_at
+
+projects (プロジェクト)
+├── id, name, description, color
+├── is_default, owner_id (FK)
+└── created_at, updated_at
+
+todos (タスク)
+├── id, title, description
+├── completed, priority, due_date
+├── project_id (FK), owner_id (FK)
+└── created_at, updated_at
 ```
 
 ## 🚀 セットアップ
@@ -56,63 +94,96 @@ MYSQL_PORT=3306
 MYSQL_DATABASE=todoapp
 MYSQL_USER=todoapp
 MYSQL_PASSWORD=todoapp_password
-
-# デバッグ設定（開発環境用）
-SQL_DEBUG=true
 ```
 
 ## 📝 API エンドポイント
 
-| メソッド | エンドポイント | 説明 |
-|---------|---------------|------|
-| GET | `/` | ヘルスチェック |
-| GET | `/health` | データベース接続確認 |
-| GET | `/todos` | Todo一覧取得 |
-| POST | `/todos` | Todo作成 |
-| PUT | `/todos/{id}` | Todo更新 |
-| DELETE | `/todos/{id}` | Todo削除 |
-| GET | `/projects` | プロジェクト一覧 |
+### 🔐 認証エンドポイント
+| メソッド | エンドポイント | 説明 | 認証 |
+|---------|---------------|------|------|
+| POST | `/auth/register` | ユーザー登録 | 不要 |
+| POST | `/auth/login` | ログイン | 不要 |
+| GET | `/auth/me` | ユーザー情報取得 | 必要 |
 
-## 🧪 テスト
+### 📁 プロジェクトエンドポイント
+| メソッド | エンドポイント | 説明 | 認証 |
+|---------|---------------|------|------|
+| GET | `/projects` | プロジェクト一覧取得 | 必要 |
+| GET | `/projects/{id}` | プロジェクト詳細取得 | 必要 |
+| POST | `/projects` | プロジェクト作成 | 必要 |
+| PUT | `/projects/{id}` | プロジェクト更新 | 必要 |
+| DELETE | `/projects/{id}` | プロジェクト削除 | 必要 |
 
+### 📝 タスクエンドポイント
+| メソッド | エンドポイント | 説明 | 認証 |
+|---------|---------------|------|------|
+| GET | `/todos` | タスク一覧取得 | 必要 |
+| GET | `/todos/{id}` | タスク詳細取得 | 必要 |
+| POST | `/todos` | タスク作成 | 必要 |
+| PUT | `/todos/{id}` | タスク更新 | 必要 |
+| DELETE | `/todos/{id}` | タスク削除 | 必要 |
+
+### 🔧 システムエンドポイント
+| メソッド | エンドポイント | 説明 | 認証 |
+|---------|---------------|------|------|
+| GET | `/` | ヘルスチェック | 不要 |
+| GET | `/health` | データベース接続確認 | 不要 |
+
+## 🔐 認証の使用方法
+
+### 1. ユーザー登録
 ```bash
-# バックエンドテスト
-cd backend
-python -m pytest tests/ -v
-
-# フロントエンドテスト
-cd frontend
-npm test
+curl -X POST http://localhost:8000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "your_username",
+    "email": "your@email.com",
+    "password": "your_password"
+  }'
 ```
 
-## 📦 ビルド
-
+### 2. ログイン
 ```bash
-# フロントエンドビルド
-cd frontend
-npm run build
-
-# Dockerイメージビルド
-docker-compose build
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "your_username",
+    "password": "your_password"
+  }'
 ```
 
-## 📁 プロジェクト構造
-
+レスポンス例：
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "user": {
+    "id": 1,
+    "username": "your_username",
+    "email": "your@email.com",
+    "is_active": true,
+    "created_at": "2025-06-15T14:57:37"
+  }
+}
 ```
-todo-app/
-├── backend/                 # FastAPI バックエンド
-│   ├── main.py             # メインアプリケーション
-│   ├── database.py         # データベース設定
-│   ├── init.sql           # MySQL初期化スクリプト
-│   └── requirements.txt    # Python依存関係
-├── frontend/               # React フロントエンド
-│   ├── src/
-│   │   ├── components/     # Reactコンポーネント
-│   │   ├── types/         # TypeScript型定義
-│   │   └── services/      # API通信
-│   └── package.json       # Node.js依存関係
-├── docker-compose.yml     # 開発環境用（MySQL）
-└── env.example           # 環境変数テンプレート
+
+### 3. 認証が必要なAPI呼び出し
+```bash
+# プロジェクト一覧取得
+curl -X GET http://localhost:8000/projects \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# タスク作成
+curl -X POST http://localhost:8000/todos \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "新しいタスク",
+    "description": "タスクの説明",
+    "priority": 2,
+    "project_id": 1,
+    "due_date": "2025-12-31T23:59:59"
+  }'
 ```
 
 ## 📦 ローカルでの起動方法
@@ -136,7 +207,7 @@ docker-compose up --build
 初回起動時は以下の処理が行われます：
 - MySQLコンテナの起動とデータベース初期化
 - 依存関係のインストールとイメージのビルド
-- データベーステーブルの作成
+- データベーステーブルの作成（users, projects, todos）
 
 起動には数分かかる場合があります。
 
@@ -162,24 +233,99 @@ docker-compose up --build
 - **User**: `todoapp`
 - **Password**: `todoapp_password`
 
+## 📁 プロジェクト構造
 
+```
+todo-app/
+├── backend/                 # FastAPI バックエンド
+│   ├── main.py             # メインアプリケーション
+│   ├── database.py         # データベースモデル
+│   ├── auth.py             # 認証機能
+│   ├── init.sql           # MySQL初期化スクリプト
+│   └── requirements.txt    # Python依存関係
+├── frontend/               # React フロントエンド
+│   ├── src/
+│   │   ├── components/     # Reactコンポーネント
+│   │   ├── types/         # TypeScript型定義
+│   │   └── services/      # API通信
+│   └── package.json       # Node.js依存関係
+├── docker-compose.yml     # 開発環境用（MySQL）
+├── .gitignore            # Git除外設定
+└── env.example           # 環境変数テンプレート
+```
 
 ## 🎯 使用方法
 
-1. **新しいタスクを追加**
-   - 「新しいタスクを追加」セクションでタスクの詳細を入力
-   - タイトル、説明、優先度、プロジェクト、期限を設定可能
+### 1. アカウント作成・ログイン
+- 初回利用時はユーザー登録を行う
+- ログイン後、JWTトークンが発行される
+- デフォルトプロジェクト「Inbox」が自動作成される
 
-2. **タスクの管理**
-   - チェックボックスをクリックしてタスクを完了/未完了に切り替え
-   - 「編集」ボタンでタスクの内容を変更
-   - 「削除」ボタンでタスクを削除
+### 2. プロジェクト管理
+- 新しいプロジェクトを作成
+- プロジェクト名、説明、カラーを設定
+- プロジェクトの編集・削除（デフォルトプロジェクトは削除不可）
 
-3. **フィルタリング**
-   - サイドバーでプロジェクト別にフィルタ
-   - 完了済みタスクの表示/非表示を切り替え
+### 3. タスク管理
+- プロジェクト内でタスクを作成
+- タスクの詳細（タイトル、説明、優先度、期限）を設定
+- タスクの完了/未完了を切り替え
+- タスクの編集・削除
+
+### 4. フィルタリング・検索
+- プロジェクト別にタスクをフィルタ
+- 完了済みタスクの表示/非表示を切り替え
+
+## 🔒 セキュリティ機能
+
+### データ分離
+- 各ユーザーは自分のデータのみアクセス可能
+- プロジェクトとタスクは所有者のみが操作可能
+- 他のユーザーのデータは完全に隠蔽
+
+### 認証・認可
+- JWT認証による安全なAPI保護
+- トークンの有効期限管理（30分）
+- bcryptによる強力なパスワードハッシュ化
+
+### API保護
+- 認証が必要なエンドポイントへの不正アクセス防止
+- 所有権チェックによる不正操作防止
+- HTTPSベアラートークン認証
+
+## 🧪 テスト
+
+### API テスト例
+
+```bash
+# ヘルスチェック
+curl http://localhost:8000/health
+
+# ユーザー登録
+curl -X POST http://localhost:8000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "email": "test@example.com", "password": "testpass123"}'
+
+# ログイン
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "password": "testpass123"}'
+
+# プロジェクト作成（要認証）
+curl -X POST http://localhost:8000/projects \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "新プロジェクト", "description": "説明", "color": "#FF5722"}'
+```
 
 ## 🐛 トラブルシューティング
+
+### 認証エラーの場合
+```bash
+# JWTトークンの有効性を確認
+curl -X GET http://localhost:8000/auth/me \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
 
 ### ポートが既に使用されている場合
 ```bash
@@ -217,4 +363,8 @@ docker-compose up --build
 3. コミット (`git commit -m 'Add amazing feature'`)
 4. プッシュ (`git push origin feature/amazing-feature`)
 5. プルリクエストを作成
+
+## 📄 ライセンス
+
+このプロジェクトはMITライセンスの下で公開されています。
 

@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
-import { Todo, TodoUpdate } from '../types/todo';
-import { format } from 'date-fns';
-import { ja } from 'date-fns/locale';
+import { Todo, TodoUpdate, Project } from '../types/todo';
 
 interface TodoItemProps {
   todo: Todo;
   onUpdate: (id: number, updates: TodoUpdate) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
-  projects: string[];
+  projects: Project[];
 }
 
 export const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdate, onDelete, projects }) => {
@@ -15,9 +13,9 @@ export const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdate, onDelete, pr
   const [editTitle, setEditTitle] = useState(todo.title);
   const [editDescription, setEditDescription] = useState(todo.description || '');
   const [editPriority, setEditPriority] = useState<1 | 2 | 3>(todo.priority);
-  const [editProject, setEditProject] = useState(todo.project);
+  const [editProjectId, setEditProjectId] = useState(todo.project_id);
   const [editDueDate, setEditDueDate] = useState(
-    todo.due_date ? new Date(todo.due_date).toISOString().split('T')[0] : ''
+    todo.due_date ? new Date(todo.due_date).toISOString().slice(0, 16) : ''
   );
 
   const priorityColors = {
@@ -41,7 +39,7 @@ export const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdate, onDelete, pr
       title: editTitle,
       description: editDescription,
       priority: editPriority,
-      project: editProject,
+      project_id: editProjectId,
       due_date: editDueDate || undefined,
     });
     setIsEditing(false);
@@ -51,16 +49,25 @@ export const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdate, onDelete, pr
     setEditTitle(todo.title);
     setEditDescription(todo.description || '');
     setEditPriority(todo.priority);
-    setEditProject(todo.project);
+    setEditProjectId(todo.project_id);
     setEditDueDate(
-      todo.due_date ? new Date(todo.due_date).toISOString().split('T')[0] : ''
+      todo.due_date ? new Date(todo.due_date).toISOString().slice(0, 16) : ''
     );
     setIsEditing(false);
   };
 
   const formatDate = (dateString: string) => {
-    return format(new Date(dateString), 'yyyy年MM月dd日', { locale: ja });
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
+
+  const currentProject = projects.find(p => p.id === todo.project_id);
 
   return (
     <div className={`todo-item ${todo.completed ? 'completed' : ''}`}>
@@ -108,24 +115,22 @@ export const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdate, onDelete, pr
                   <label htmlFor="edit-project">プロジェクト:</label>
                   <select
                     id="edit-project"
-                    value={editProject}
-                    onChange={(e) => setEditProject(e.target.value)}
+                    value={editProjectId}
+                    onChange={(e) => setEditProjectId(Number(e.target.value))}
                     className="todo-select"
                   >
-                    <option value="Inbox">Inbox</option>
-                    {projects
-                      .filter(p => p !== 'Inbox')
-                      .map(p => (
-                        <option key={p} value={p}>{p}</option>
-                      ))
-                    }
+                    {projects.map(project => (
+                      <option key={project.id} value={project.id}>
+                        {project.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div className="form-group">
                   <label htmlFor="edit-due-date">期限:</label>
                   <input
-                    type="date"
+                    type="datetime-local"
                     id="edit-due-date"
                     value={editDueDate}
                     onChange={(e) => setEditDueDate(e.target.value)}
@@ -156,7 +161,15 @@ export const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdate, onDelete, pr
                 >
                   優先度: {priorityLabels[todo.priority]}
                 </span>
-                <span className="todo-project">プロジェクト: {todo.project}</span>
+                <span className="todo-project">
+                  プロジェクト: {todo.project_name}
+                  {currentProject && (
+                    <span 
+                      className="project-color-indicator"
+                      style={{ backgroundColor: currentProject.color }}
+                    ></span>
+                  )}
+                </span>
                 {todo.due_date && (
                   <span className="todo-due-date">
                     期限: {formatDate(todo.due_date)}
