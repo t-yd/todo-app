@@ -8,7 +8,6 @@ import os
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    # MySQL用のデフォルト設定
     MYSQL_USER = os.getenv("MYSQL_USER", "todoapp")
     MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "todoapp_password")
     MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
@@ -21,8 +20,7 @@ if not DATABASE_URL:
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
-    pool_recycle=300,
-    echo=os.getenv("SQL_DEBUG", "true").lower() == "true"
+    pool_recycle=300
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -52,16 +50,14 @@ def get_db():
 
 # テーブル作成関数
 def create_tables():
-    """データベーステーブルを作成"""
     Base.metadata.create_all(bind=engine)
 
 # データベース接続テスト関数
 def test_connection():
-    """データベース接続をテスト"""
     try:
         db = SessionLocal()
         db.execute(text("SELECT 1"))
         db.close()
-        return True, "データベース接続成功: MYSQL"
+        return True, "データベース接続成功"
     except Exception as e:
         return False, f"データベース接続失敗: {str(e)}" 
