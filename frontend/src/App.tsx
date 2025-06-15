@@ -1,24 +1,53 @@
 import React, { useState, useEffect } from 'react';
-import { Todo, TodoCreate, TodoUpdate } from './types/todo';
-import { todoApi } from './services/api';
+import { Todo, TodoCreate, TodoUpdate, Project, User } from './types/todo';
+import { todoApi, projectApi, authApi } from './services/api';
 import { TodoItem } from './components/TodoItem';
 import { TodoForm } from './components/TodoForm';
+import Login from './components/Login';
+import Register from './components/Register';
 import './App.css';
+import ProjectManager from './components/ProjectManager';
+import { ProjectCreate, ProjectUpdate } from './types/todo';
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [showRegister, setShowRegister] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [projects, setProjects] = useState<string[]>(['Inbox']);
-  const [selectedProject, setSelectedProject] = useState<string>('');
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [showCompleted, setShowCompleted] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
 
+  // 認証状態をチェック
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (authApi.isAuthenticated()) {
+        try {
+          const user = await authApi.getCurrentUser();
+          setCurrentUser(user);
+          setIsAuthenticated(true);
+        } catch (err) {
+          // トークンが無効な場合はログアウト
+          authApi.logout();
+          setIsAuthenticated(false);
+        }
+      }
+      setLoading(false);
+    };
+
+    checkAuth();
+  }, []);
+
   // Todoリストを取得
   const fetchTodos = async () => {
+    if (!isAuthenticated) return;
+    
     try {
       setLoading(true);
       const fetchedTodos = await todoApi.getTodos(
-        selectedProject || undefined,
+        selectedProjectId || undefined,
         showCompleted ? undefined : false
       );
       setTodos(fetchedTodos);
@@ -32,9 +61,16 @@ function App() {
 
   // プロジェクトリストを取得
   const fetchProjects = async () => {
+    if (!isAuthenticated) return;
+    
     try {
-      const fetchedProjects = await todoApi.getProjects();
-      setProjects(['Inbox', ...fetchedProjects.filter(p => p !== 'Inbox')]);
+      const fetchedProjects = await projectApi.getProjects();
+      setProjects(fetchedProjects);
+      
+      // 初期選択は全プロジェクト表示
+      if (fetchedProjects.length > 0 && selectedProjectId === null) {
+        // 何も選択しない（全プロジェクト表示）
+      }
     } catch (err) {
       console.error('Error fetching projects:', err);
     }
@@ -45,7 +81,6 @@ function App() {
     try {
       await todoApi.createTodo(todoData);
       await fetchTodos();
-      await fetchProjects();
     } catch (err) {
       setError('Todoの作成に失敗しました');
       console.error('Error creating todo:', err);
@@ -69,7 +104,6 @@ function App() {
       try {
         await todoApi.deleteTodo(id);
         await fetchTodos();
-        await fetchProjects();
       } catch (err) {
         setError('Todoの削除に失敗しました');
         console.error('Error deleting todo:', err);
@@ -77,42 +111,132 @@ function App() {
     }
   };
 
-  // 初期データ読み込み
+  // ログイン成功時の処理
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+    setShowRegister(false);
+    const user = authApi.getStoredUser();
+    setCurrentUser(user);
+  };
+
+  // ログアウト処理
+  const handleLogout = () => {
+    authApi.logout();
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    setTodos([]);
+    setProjects([]);
+    setSelectedProjectId(null);
+  };
+
+  // 認証後のデータ読み込み
   useEffect(() => {
-    fetchTodos();
-    fetchProjects();
-  }, [selectedProject, showCompleted]);
+    if (isAuthenticated) {
+      fetchProjects();
+    }
+  }, [isAuthenticated]);
+
+  // プロジェクト変更時のTodo読み込み
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchTodos();
+    }
+  }, [isAuthenticated, selectedProjectId, showCompleted]);
+
+  // プロジェクト管理関数
+  const handleProjectCreate = async (projectData: ProjectCreate) => {
+    try {
+      const newProject = await projectApi.createProject(projectData);
+      setProjects(prev => [...prev, newProject]);
+      setSelectedProjectId(newProject.id);
+    } catch (error) {
+      console.error('プロジェクト作成エラー:', error);
+      throw error;
+    }
+  };
+
+  const handleProjectUpdate = async (id: number, projectData: ProjectUpdate) => {
+    try {
+      const updatedProject = await projectApi.updateProject(id, projectData);
+      setProjects(prev => prev.map(p => p.id === id ? updatedProject : p));
+    } catch (error) {
+      console.error('プロジェクト更新エラー:', error);
+      throw error;
+    }
+  };
+
+  const handleProjectDelete = async (id: number) => {
+    try {
+      await projectApi.deleteProject(id);
+      setProjects(prev => prev.filter(p => p.id !== id));
+      
+      // 削除されたプロジェクトが選択されていた場合、全プロジェクト表示に切り替え
+      if (selectedProjectId === id) {
+        setSelectedProjectId(null);
+      }
+    } catch (error) {
+      console.error('プロジェクト削除エラー:', error);
+      throw error;
+    }
+  };
+
+  const handleProjectSelect = (projectId: number | null) => {
+    setSelectedProjectId(projectId);
+  };
+
+  // 認証されていない場合はログイン/登録画面を表示
+  if (!isAuthenticated) {
+    return (
+      <div className="app">
+        <header className="app-header">
+          <h1>📝 Todo アプリケーション</h1>
+        </header>
+        <div className="auth-container">
+          {showRegister ? (
+            <Register
+              onRegister={handleLogin}
+              onSwitchToLogin={() => setShowRegister(false)}
+            />
+          ) : (
+            <Login
+              onLogin={handleLogin}
+              onSwitchToRegister={() => setShowRegister(true)}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const activeTodos = todos.filter(todo => !todo.completed);
   const completedTodos = todos.filter(todo => todo.completed);
+  const selectedProject = projects.find(p => p.id === selectedProjectId);
 
   return (
     <div className="app">
       <header className="app-header">
         <h1>📝 Todo アプリケーション</h1>
+        <div className="user-info">
+          <span>ようこそ、{currentUser?.username}さん</span>
+          <button onClick={handleLogout} className="logout-button">
+            ログアウト
+          </button>
+        </div>
       </header>
 
       <div className="app-content">
         <aside className="sidebar">
+          <ProjectManager
+            projects={projects}
+            selectedProjectId={selectedProjectId}
+            onProjectSelect={handleProjectSelect}
+            onProjectCreate={handleProjectCreate}
+            onProjectUpdate={handleProjectUpdate}
+            onProjectDelete={handleProjectDelete}
+          />
+          
           <div className="filters">
-            <h3>フィルター</h3>
-            <div className="filter-group">
-              <label htmlFor="project-filter">プロジェクト:</label>
-              <select
-                id="project-filter"
-                value={selectedProject}
-                onChange={(e) => setSelectedProject(e.target.value)}
-                className="filter-select"
-              >
-                <option value="">すべて</option>
-                {projects.map(project => (
-                  <option key={project} value={project}>
-                    {project}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="filter-group">
+            <div className="filter-options">
               <label>
                 <input
                   type="checkbox"
@@ -135,10 +259,29 @@ function App() {
 
           <section className="todo-form-section">
             <h2>新しいタスクを追加</h2>
-            <TodoForm onSubmit={handleCreateTodo} projects={projects} />
+            <TodoForm 
+              onSubmit={handleCreateTodo} 
+              projects={projects}
+              defaultProjectId={selectedProjectId || undefined}
+            />
           </section>
 
           <section className="todo-list-section">
+            {selectedProjectId === null ? (
+              <h3>📋 すべてのプロジェクト</h3>
+            ) : (
+              selectedProject && (
+                <div className="project-header">
+                  <h1 style={{ color: selectedProject.color }}>
+                    {selectedProject.name}
+                  </h1>
+                  {selectedProject.description && (
+                    <p className="project-description">{selectedProject.description}</p>
+                  )}
+                </div>
+              )
+            )}
+
             {loading ? (
               <div className="loading">読み込み中...</div>
             ) : (
@@ -179,8 +322,16 @@ function App() {
 
                 {todos.length === 0 && (
                   <div className="empty-state">
-                    <p>まだタスクがありません。</p>
-                    <p>上のフォームから新しいタスクを追加してください。</p>
+                    {selectedProjectId === null ? (
+                      <p>まだタスクがありません。新しいタスクを追加してみましょう！</p>
+                    ) : selectedProject ? (
+                      <>
+                        <p>{selectedProject.name}にはまだタスクがありません。</p>
+                        <p>上のフォームから新しいタスクを追加してください。</p>
+                      </>
+                    ) : (
+                      <p>プロジェクトを選択してください。</p>
+                    )}
                   </div>
                 )}
               </>

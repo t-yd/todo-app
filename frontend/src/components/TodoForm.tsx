@@ -1,22 +1,32 @@
-import React, { useState } from 'react';
-import { TodoCreate } from '../types/todo';
+import React, { useState, useEffect } from 'react';
+import { TodoCreate, Project } from '../types/todo';
 
 interface TodoFormProps {
   onSubmit: (todo: TodoCreate) => Promise<void>;
-  projects: string[];
+  projects: Project[];
+  defaultProjectId?: number;
 }
 
-export const TodoForm: React.FC<TodoFormProps> = ({ onSubmit, projects }) => {
+export const TodoForm: React.FC<TodoFormProps> = ({ onSubmit, projects, defaultProjectId }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState<1 | 2 | 3>(1);
-  const [project, setProject] = useState('Inbox');
+  const [priority, setPriority] = useState<1 | 2 | 3>(2);
+  const [projectId, setProjectId] = useState<number>(defaultProjectId || (projects.length > 0 ? projects[0].id : 0));
   const [dueDate, setDueDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // デフォルトプロジェクトまたはプロジェクトリストが変更された時に更新
+  useEffect(() => {
+    if (defaultProjectId) {
+      setProjectId(defaultProjectId);
+    } else if (projects.length > 0 && projectId === 0) {
+      setProjectId(projects[0].id);
+    }
+  }, [defaultProjectId, projects, projectId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || !projectId || projects.length === 0) return;
 
     setIsSubmitting(true);
     try {
@@ -24,22 +34,33 @@ export const TodoForm: React.FC<TodoFormProps> = ({ onSubmit, projects }) => {
         title: title.trim(),
         description: description.trim() || undefined,
         priority,
-        project,
+        project_id: projectId,
         due_date: dueDate || undefined,
       });
       
       // フォームをリセット
       setTitle('');
       setDescription('');
-      setPriority(1);
-      setProject('Inbox');
+      setPriority(2);
       setDueDate('');
+      // プロジェクトはデフォルトのままにする
     } catch (error) {
       console.error('Todo作成エラー:', error);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // プロジェクトが存在しない場合の表示
+  if (projects.length === 0) {
+    return (
+      <div className="todo-form">
+        <p className="no-projects-message">
+          タスクを作成するには、まずプロジェクトを作成してください。
+        </p>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="todo-form">
@@ -83,24 +104,22 @@ export const TodoForm: React.FC<TodoFormProps> = ({ onSubmit, projects }) => {
           <label htmlFor="project">プロジェクト:</label>
           <select
             id="project"
-            value={project}
-            onChange={(e) => setProject(e.target.value)}
+            value={projectId}
+            onChange={(e) => setProjectId(Number(e.target.value))}
             className="todo-select"
           >
-            <option value="Inbox">Inbox</option>
-            {projects
-              .filter(p => p !== 'Inbox')
-              .map(p => (
-                <option key={p} value={p}>{p}</option>
-              ))
-            }
+            {projects.map(project => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
           </select>
         </div>
 
         <div className="form-group">
           <label htmlFor="dueDate">期限:</label>
           <input
-            type="date"
+            type="datetime-local"
             id="dueDate"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
@@ -111,7 +130,7 @@ export const TodoForm: React.FC<TodoFormProps> = ({ onSubmit, projects }) => {
 
       <button
         type="submit"
-        disabled={!title.trim() || isSubmitting}
+        disabled={!title.trim() || isSubmitting || !projectId}
         className="submit-btn"
       >
         {isSubmitting ? '作成中...' : 'タスクを追加'}

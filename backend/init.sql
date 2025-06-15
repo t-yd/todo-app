@@ -5,6 +5,11 @@ ALTER DATABASE todoapp CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 -- タイムゾーンを設定
 SET time_zone = '+00:00';
 
+-- 既存のテーブルを削除（新しい構造に対応するため）
+DROP TABLE IF EXISTS todos;
+DROP TABLE IF EXISTS projects;
+DROP TABLE IF EXISTS users;
+
 -- 既存ユーザーを削除
 DROP USER IF EXISTS 'todoapp'@'localhost';
 DROP USER IF EXISTS 'todoapp'@'%';
