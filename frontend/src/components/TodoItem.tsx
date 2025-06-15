@@ -7,12 +7,18 @@ interface TodoItemProps {
   todo: Todo;
   onUpdate: (id: number, updates: TodoUpdate) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
+  projects: string[];
 }
 
-export const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdate, onDelete }) => {
+export const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdate, onDelete, projects }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(todo.title);
   const [editDescription, setEditDescription] = useState(todo.description || '');
+  const [editPriority, setEditPriority] = useState<1 | 2 | 3>(todo.priority);
+  const [editProject, setEditProject] = useState(todo.project);
+  const [editDueDate, setEditDueDate] = useState(
+    todo.due_date ? new Date(todo.due_date).toISOString().split('T')[0] : ''
+  );
 
   const priorityColors = {
     1: '#4CAF50', // 低優先度 - 緑
@@ -34,6 +40,9 @@ export const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdate, onDelete }) 
     await onUpdate(todo.id, {
       title: editTitle,
       description: editDescription,
+      priority: editPriority,
+      project: editProject,
+      due_date: editDueDate || undefined,
     });
     setIsEditing(false);
   };
@@ -41,6 +50,11 @@ export const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdate, onDelete }) 
   const handleCancelEdit = () => {
     setEditTitle(todo.title);
     setEditDescription(todo.description || '');
+    setEditPriority(todo.priority);
+    setEditProject(todo.project);
+    setEditDueDate(
+      todo.due_date ? new Date(todo.due_date).toISOString().split('T')[0] : ''
+    );
     setIsEditing(false);
   };
 
@@ -74,6 +88,52 @@ export const TodoItem: React.FC<TodoItemProps> = ({ todo, onUpdate, onDelete }) 
                 placeholder="説明（オプション）"
                 rows={3}
               />
+              
+              <div className="todo-edit-fields">
+                <div className="form-group">
+                  <label htmlFor="edit-priority">優先度:</label>
+                  <select
+                    id="edit-priority"
+                    value={editPriority}
+                    onChange={(e) => setEditPriority(Number(e.target.value) as 1 | 2 | 3)}
+                    className="todo-select"
+                  >
+                    <option value={1}>低</option>
+                    <option value={2}>中</option>
+                    <option value={3}>高</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="edit-project">プロジェクト:</label>
+                  <select
+                    id="edit-project"
+                    value={editProject}
+                    onChange={(e) => setEditProject(e.target.value)}
+                    className="todo-select"
+                  >
+                    <option value="Inbox">Inbox</option>
+                    {projects
+                      .filter(p => p !== 'Inbox')
+                      .map(p => (
+                        <option key={p} value={p}>{p}</option>
+                      ))
+                    }
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="edit-due-date">期限:</label>
+                  <input
+                    type="date"
+                    id="edit-due-date"
+                    value={editDueDate}
+                    onChange={(e) => setEditDueDate(e.target.value)}
+                    className="todo-date-input"
+                  />
+                </div>
+              </div>
+
               <div className="todo-edit-actions">
                 <button onClick={handleSaveEdit} className="save-btn">
                   保存

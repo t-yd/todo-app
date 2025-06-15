@@ -153,6 +153,7 @@ function App() {
                           todo={todo}
                           onUpdate={handleUpdateTodo}
                           onDelete={handleDeleteTodo}
+                          projects={projects}
                         />
                       ))}
                     </div>
@@ -169,6 +170,7 @@ function App() {
                           todo={todo}
                           onUpdate={handleUpdateTodo}
                           onDelete={handleDeleteTodo}
+                          projects={projects}
                         />
                       ))}
                     </div>
