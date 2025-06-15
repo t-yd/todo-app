@@ -1,85 +1,73 @@
 # Todo アプリケーション
 
-JWT認証を使用したマルチユーザー対応のタスク管理アプリケーション
+マルチユーザー対応のモダンなTodoアプリケーションです。FastAPI（Python）とReact（TypeScript）で構築されており、JWT認証とプロジェクト管理機能を提供します。
 
-## 🚀 特徴
+## 🚀 機能
 
-### 🔐 ユーザー認証・認可
-- ✅ ユーザー登録・ログイン機能
-- 🔒 JWT認証によるセキュアなAPI保護
-- 👤 ユーザー別データ分離（自分のデータのみアクセス可能）
-- 🛡️ bcryptによるパスワードハッシュ化
+- **ユーザー認証**: JWT認証によるセキュアなログイン・登録システム
+- **プロジェクト管理**: カラー付きプロジェクトの作成、編集、削除
+- **タスク管理**: プロジェクト別のタスク管理（作成、編集、削除、完了状態の切り替え）
+- **フィルタリング**: プロジェクト別表示、完了済みタスクの表示/非表示
+- **レスポンシブデザイン**: モバイルフレンドリーなUI
 
-### 📁 プロジェクト管理
-- ✅ プロジェクトの作成、編集、削除
-- 🎨 プロジェクトカラー設定（16色のプリセット）
-- 📂 全プロジェクト表示機能
-- 🔒 ユーザー別プロジェクト管理
-
-### 📝 タスク管理
-- ✅ タスクの作成、編集、削除
-- 🔄 タスクの完了/未完了の切り替え
-- 📅 期限設定機能
-- 🎯 優先度設定（低・中・高）
-- 🔍 プロジェクト別フィルタリング
-- 📱 レスポンシブデザイン
-
-## 🛠 技術スタック
+## 🛠️ 技術スタック
 
 ### バックエンド
-- **Python 3.11**
-- **FastAPI** - 高性能なWeb API フレームワーク
-- **SQLAlchemy** - ORM
-- **MySQL 8.0** - データベース
-- **JWT** - 認証
-- **bcrypt** - パスワードハッシュ化
+- **FastAPI**: 高性能なPython Webフレームワーク
+- **SQLAlchemy**: ORM（Object-Relational Mapping）
+- **MySQL**: データベース
+- **JWT**: 認証トークン
+- **bcrypt**: パスワードハッシュ化
 
 ### フロントエンド
-- **TypeScript**
-- **React 18**
-- **CSS3** - モダンなUI/UXデザイン
+- **React**: UIライブラリ
+- **TypeScript**: 型安全なJavaScript
+- **Axios**: HTTP クライアント
+- **CSS3**: スタイリング
 
 ### インフラ
-- **Docker** & **Docker Compose**
+- **Docker**: コンテナ化
+- **Docker Compose**: マルチコンテナ管理
 
-## 🏗 アーキテクチャ
+## 📁 プロジェクト構造
 
 ```
-Frontend (React + TypeScript) ←→ Backend (FastAPI + JWT) ←→ MySQL
+todo-app/
+├── backend/                 # FastAPI バックエンド
+│   ├── main.py             # メインアプリケーション
+│   ├── database.py         # データベース設定とモデル
+│   ├── auth.py             # 認証機能
+│   ├── requirements.txt    # Python依存関係
+│   ├── test_main.py        # ユニットテスト
+│   ├── simple_test.py      # APIテスト
+│   └── pytest.ini         # pytest設定
+├── frontend/               # React フロントエンド
+│   ├── src/
+│   │   ├── App.tsx         # メインアプリケーション
+│   │   ├── components/     # Reactコンポーネント
+│   │   ├── services/       # API サービス
+│   │   ├── types/          # TypeScript型定義
+│   │   └── App.test.tsx    # テストファイル
+│   ├── package.json        # Node.js依存関係
+│   └── public/             # 静的ファイル
+├── docker-compose.yml      # Docker Compose設定
+├── run_tests.sh           # テスト実行スクリプト
+└── README.md              # このファイル
 ```
 
-### データベース構造
-```
-users (ユーザー情報)
-├── id, username, email
-├── hashed_password
-└── is_active, created_at, updated_at
-
-projects (プロジェクト)
-├── id, name, description, color
-├── owner_id (FK)
-└── created_at, updated_at
-
-todos (タスク)
-├── id, title, description
-├── completed, priority, due_date
-├── project_id (FK), owner_id (FK)
-└── created_at, updated_at
-```
-
-## 🚀 クイックスタート
+## 🚀 セットアップと実行
 
 ### 前提条件
 - Docker
 - Docker Compose
 
-### 1. リポジトリをクローン
+### 1. リポジトリのクローン
 ```bash
 git clone <repository-url>
 cd todo-app
 ```
 
-### 2. アプリケーションを起動
+### 2. アプリケーションの起動
 ```bash
 docker-compose up -d
 ```
@@ -89,176 +77,117 @@ docker-compose up -d
 - **バックエンドAPI**: http://localhost:8000
 - **API ドキュメント**: http://localhost:8000/docs
 
-### 4. 動作確認
-```bash
-# バックエンドの動作確認
-curl http://localhost:8000/health
+## 🧪 テスト
 
-# レスポンス例
-{"status":"healthy","database":"データベース接続成功"}
+### 全テストの実行
+```bash
+./run_tests.sh
 ```
 
-## 📖 使用方法
+### 個別テストの実行
 
-### 1. ユーザー登録・ログイン
-1. http://localhost:3000 にアクセス
-2. 「新規登録」をクリック
-3. ユーザー名、メールアドレス、パスワードを入力
-4. 登録後、自動的にログイン
+#### フロントエンドテスト
+```bash
+docker-compose exec frontend npm test
+```
 
-### 2. プロジェクト管理
-1. サイドバーの「追加」ボタンでプロジェクトを作成
-2. プロジェクト名、説明、カラーを設定
-3. 「編集」「削除」ボタンで管理
-4. 「すべてのプロジェクト」で全タスクを表示
+#### バックエンドユニットテスト（pytest）
+```bash
+docker-compose exec backend python -m pytest test_main.py -v
+```
 
-### 3. タスク管理
-1. 「新しいタスクを追加」フォームでタスクを作成
-2. タイトル、説明、優先度、期限を設定
-3. チェックボックスで完了/未完了を切り替え
-4. 「編集」「削除」ボタンで管理
+#### バックエンドAPIテスト
+```bash
+docker-compose exec backend python simple_test.py
+```
 
-## 📝 API ドキュメント
+### テスト内容
+- **フロントエンド**: Reactコンポーネントのレンダリングテスト（1件）
+- **バックエンドユニットテスト**: pytestベースの包括的なテスト（16件）
+  - 認証機能（ユーザー登録、ログイン、認証情報取得）
+  - プロジェクト管理（CRUD操作）
+  - タスク管理（CRUD操作、フィルタリング）
+  - システムエンドポイント（ヘルスチェック、ルート）
+- **バックエンドAPIテスト**: エンドポイントの統合テスト（8件）
+  - ヘルスチェック
+  - ユーザー認証（登録・ログイン）
+  - プロジェクト管理（作成・一覧取得）
+  - タスク管理（作成・一覧取得）
 
-FastAPIが自動生成するSwagger UIドキュメントで、すべてのエンドポイントの詳細仕様を確認できます：
+## 📊 API エンドポイント
 
-**API ドキュメント**: http://localhost:8000/docs
-
-### 主要エンドポイント
-
-#### 認証
+### 認証
 - `POST /auth/register` - ユーザー登録
 - `POST /auth/login` - ログイン
-- `GET /auth/me` - ユーザー情報取得
+- `GET /auth/me` - 現在のユーザー情報取得
 
-#### プロジェクト
-- `GET /projects` - プロジェクト一覧
+### プロジェクト
+- `GET /projects` - プロジェクト一覧取得
 - `POST /projects` - プロジェクト作成
 - `PUT /projects/{id}` - プロジェクト更新
 - `DELETE /projects/{id}` - プロジェクト削除
 
-#### タスク
-- `GET /todos` - タスク一覧（フィルタ対応）
+### タスク
+- `GET /todos` - タスク一覧取得
 - `POST /todos` - タスク作成
 - `PUT /todos/{id}` - タスク更新
 - `DELETE /todos/{id}` - タスク削除
 
+### システム
+- `GET /` - ルートエンドポイント
+- `GET /health` - ヘルスチェック
+
+詳細なAPI仕様は http://localhost:8000/docs で確認できます。
+
 ## 🔧 開発
 
-### 環境変数
-`env.example`をコピーして`.env`を作成：
-
-```bash
-cp env.example .env
-```
-
-### ローカル開発
+### 開発環境での起動
 ```bash
 # 開発モードで起動（ホットリロード有効）
-docker-compose up -d
+docker-compose up
+```
 
-# ログを確認
+### ログの確認
+```bash
+# 全サービスのログ
 docker-compose logs -f
 
-# コンテナに入る
-docker-compose exec backend bash
-docker-compose exec frontend bash
+# 特定サービスのログ
+docker-compose logs -f backend
+docker-compose logs -f frontend
 ```
 
-### データベース操作
+### データベースの初期化
 ```bash
-# MySQLに接続
-docker-compose exec mysql mysql -u todoapp -ptodoapp_password todoapp
-
-# ユーザー一覧確認
-SELECT id, username, email, created_at FROM users;
+# コンテナとボリュームを削除して完全にリセット
+docker-compose down -v
+docker-compose up -d
 ```
 
-## 🧪 テスト
+## 🛡️ セキュリティ
 
-### API テスト例
-```bash
-# ユーザー登録
-curl -X POST http://localhost:8000/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "testuser",
-    "email": "test@example.com",
-    "password": "password123"
-  }'
-
-# ログイン
-curl -X POST http://localhost:8000/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "testuser",
-    "password": "password123"
-  }'
-```
-
-## 📁 プロジェクト構造
-
-```
-todo-app/
-├── backend/                 # FastAPI バックエンド
-│   ├── main.py             # メインアプリケーション
-│   ├── database.py         # データベース設定・モデル
-│   ├── auth.py             # 認証機能
-│   ├── requirements.txt    # Python依存関係
-│   ├── Dockerfile          # バックエンドDockerfile
-│   └── init.sql           # データベース初期化SQL
-├── frontend/               # React フロントエンド
-│   ├── src/
-│   │   ├── components/     # Reactコンポーネント
-│   │   ├── services/       # API通信
-│   │   ├── types/          # TypeScript型定義
-│   │   ├── App.tsx         # メインアプリケーション
-│   │   └── App.css         # スタイル
-│   ├── package.json        # Node.js依存関係
-│   └── Dockerfile          # フロントエンドDockerfile
-├── docker-compose.yml      # Docker Compose設定
-├── .gitignore             # Git除外設定
-├── env.example            # 環境変数テンプレート
-└── README.md              # このファイル
-```
-
-## 🔒 セキュリティ
-
-- JWT認証による安全なAPI保護
+- JWT認証による安全なユーザー認証
 - bcryptによるパスワードハッシュ化
 - ユーザー別データ分離
-- CORS設定による適切なオリジン制御
-- SQLインジェクション対策（SQLAlchemy ORM使用）
+- CORS設定による適切なアクセス制御
 
-## 🚀 本番環境デプロイ
+## 📝 使用方法
 
-本番環境では以下の設定を推奨：
+1. **ユーザー登録**: 新規アカウントを作成
+2. **ログイン**: 認証情報でログイン
+3. **プロジェクト作成**: 「追加」ボタンでプロジェクトを作成
+4. **タスク管理**: プロジェクト内でタスクを作成・管理
+5. **フィルタリング**: プロジェクト別や完了状態でタスクを絞り込み
 
-1. **環境変数の設定**
-   - 強力なJWT秘密鍵
-   - 安全なデータベースパスワード
+## 🤝 コントリビューション
 
-2. **HTTPS の使用**
-   - SSL/TLS証明書の設定
-   - セキュアなCookie設定
-
-3. **データベース**
-   - 本番用MySQLサーバー
-   - 定期バックアップ
+1. フォークする
+2. フィーチャーブランチを作成 (`git checkout -b feature/amazing-feature`)
+3. 変更をコミット (`git commit -m 'Add some amazing feature'`)
+4. ブランチにプッシュ (`git push origin feature/amazing-feature`)
+5. プルリクエストを作成
 
 ## 📄 ライセンス
 
 このプロジェクトはMITライセンスの下で公開されています。
-
-## 🤝 コントリビューション
-
-1. このリポジトリをフォーク
-2. 機能ブランチを作成 (`git checkout -b feature/amazing-feature`)
-3. 変更をコミット (`git commit -m 'Add amazing feature'`)
-4. ブランチにプッシュ (`git push origin feature/amazing-feature`)
-5. プルリクエストを作成
-
-## 📞 サポート
-
-問題や質問がある場合は、GitHubのIssuesページで報告してください。
 
