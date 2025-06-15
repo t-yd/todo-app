@@ -103,7 +103,7 @@ jobs:
     - name: Run ESLint
       run: |
         cd frontend
-        npm run lint || true
+        npm run lint
 
     - name: Set up Python
       uses: actions/setup-python@v4
