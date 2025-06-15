@@ -1,35 +1,13 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, Text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 import os
 
-# データベース設定
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./todos.db")
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-# データベースモデル
-class TodoItem(Base):
-    __tablename__ = "todos"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, index=True)
-    description = Column(Text, nullable=True)
-    completed = Column(Boolean, default=False)
-    priority = Column(Integer, default=1)  # 1: Low, 2: Medium, 3: High
-    project = Column(String, default="Inbox")
-    due_date = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-# テーブル作成
-Base.metadata.create_all(bind=engine)
+# 新しいデータベースモジュールをインポート
+from database import TodoItem, get_db, create_tables, test_connection
 
 # Pydanticモデル
 class TodoCreate(BaseModel):
@@ -73,18 +51,37 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# データベースセッション
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# アプリケーション起動時にテーブルを作成
+@app.on_event("startup")
+async def startup_event():
+    # データベース接続テスト
+    success, message = test_connection()
+    print(f"データベース接続テスト: {message}")
+    
+    if success:
+        # テーブル作成
+        create_tables()
+        print("データベーステーブルの初期化完了")
+    else:
+        print("警告: データベース接続に問題があります")
 
 # API エンドポイント
 @app.get("/")
 async def root():
-    return {"message": "Todo API サーバーが正常に動作しています"}
+    success, message = test_connection()
+    return {
+        "message": "Todo API サーバーが正常に動作しています",
+        "database_status": message
+    }
+
+@app.get("/health")
+async def health_check():
+    """ヘルスチェックエンドポイント"""
+    success, message = test_connection()
+    if success:
+        return {"status": "healthy", "database": message}
+    else:
+        raise HTTPException(status_code=503, detail=f"Database unhealthy: {message}")
 
 @app.get("/todos", response_model=List[TodoResponse])
 async def get_todos(
