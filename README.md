@@ -79,7 +79,7 @@ cd todo-app
 
 ### 2. アプリケーションの起動
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ### 3. アクセス
@@ -98,17 +98,17 @@ docker-compose up -d
 
 #### フロントエンドテスト
 ```bash
-docker-compose exec frontend npm test
+docker compose exec frontend npm test
 ```
 
 #### バックエンドユニットテスト（pytest）
 ```bash
-docker-compose exec backend python -m pytest test_main.py -v
+docker compose exec backend python -m pytest test_main.py -v
 ```
 
 #### バックエンドAPIテスト
 ```bash
-docker-compose exec backend python simple_test.py
+docker compose exec backend python simple_test.py
 ```
 
 ### GitHub Actions 自動テスト
@@ -180,24 +180,24 @@ docker-compose exec backend python simple_test.py
 ### 開発環境での起動
 ```bash
 # 開発モードで起動（ホットリロード有効）
-docker-compose up
+docker compose up
 ```
 
 ### ログの確認
 ```bash
 # 全サービスのログ
-docker-compose logs -f
+docker compose logs -f
 
 # 特定サービスのログ
-docker-compose logs -f backend
-docker-compose logs -f frontend
+docker compose logs -f backend
+docker compose logs -f frontend
 ```
 
 ### データベースの初期化
 ```bash
 # コンテナとボリュームを削除して完全にリセット
-docker-compose down -v
-docker-compose up -d
+docker compose down -v
+docker compose up -d
 ```
 
 ## 🛡️ セキュリティ
