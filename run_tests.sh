@@ -4,9 +4,9 @@ echo "🧪 Todo アプリケーションのテストを実行します..."
 echo
 
 # Dockerコンテナが起動しているかチェック
-if ! docker-compose ps | grep -q "Up"; then
+if ! docker compose ps | grep -q "Up"; then
     echo "⚠️  Dockerコンテナが起動していません。起動中..."
-    docker-compose up -d
+    docker compose up -d
     echo "⏳ サービスの起動を待機中..."
     sleep 10
 fi
@@ -20,13 +20,13 @@ echo
 # フロントエンドテスト
 echo "🎨 フロントエンドテストを実行中..."
 echo "----------------------------------------"
-docker-compose exec -T frontend npm test -- --watchAll=false
+docker compose exec -T frontend npm test -- --watchAll=false
 frontend_result=$?
 
 echo
 echo "🔬 バックエンドユニットテストを実行中..."
 echo "----------------------------------------"
-docker-compose exec -T backend python -m pytest test_main.py -v --tb=short
+docker compose exec -T backend python -m pytest test_main.py -v --tb=short
 pytest_result=$?
 
 echo
@@ -45,7 +45,7 @@ for i in {1..30}; do
 done
 
 # シンプルなAPIテストを実行
-docker-compose exec -T backend python simple_test.py
+docker compose exec -T backend python simple_test.py
 api_result=$?
 
 echo

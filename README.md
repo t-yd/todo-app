@@ -9,6 +9,7 @@
 - **タスク管理**: プロジェクト別のタスク管理（作成、編集、削除、完了状態の切り替え）
 - **フィルタリング**: プロジェクト別表示、完了済みタスクの表示/非表示
 - **レスポンシブデザイン**: モバイルフレンドリーなUI
+- **自動テスト**: GitHub Actionsによる継続的インテグレーション
 
 ## 🛠️ 技術スタック
 
@@ -25,22 +26,30 @@
 - **Axios**: HTTP クライアント
 - **CSS3**: スタイリング
 
-### インフラ
+### インフラ・CI/CD
 - **Docker**: コンテナ化
 - **Docker Compose**: マルチコンテナ管理
+- **GitHub Actions**: 継続的インテグレーション・デプロイメント
+- **pytest**: バックエンドテストフレームワーク
+- **Jest**: フロントエンドテストフレームワーク
 
 ## 📁 プロジェクト構造
 
 ```
 todo-app/
-├── backend/                 # FastAPI バックエンド
+├── .github/
+│   └── workflows/          # GitHub Actions ワークフロー
+│       ├── ci.yml          # メインCI/CDパイプライン
+│       └── pr-check.yml    # プルリクエスト用軽量チェック
+├── backend/                # FastAPI バックエンド
 │   ├── main.py             # メインアプリケーション
 │   ├── database.py         # データベース設定とモデル
 │   ├── auth.py             # 認証機能
 │   ├── requirements.txt    # Python依存関係
 │   ├── test_main.py        # ユニットテスト
 │   ├── simple_test.py      # APIテスト
-│   └── pytest.ini         # pytest設定
+│   ├── pytest.ini         # pytest設定
+│   └── .flake8            # Python linting設定
 ├── frontend/               # React フロントエンド
 │   ├── src/
 │   │   ├── App.tsx         # メインアプリケーション
@@ -50,8 +59,9 @@ todo-app/
 │   │   └── App.test.tsx    # テストファイル
 │   ├── package.json        # Node.js依存関係
 │   └── public/             # 静的ファイル
-├── docker-compose.yml      # Docker Compose設定
-├── run_tests.sh           # テスト実行スクリプト
+├── docker-compose.yml      # 開発用Docker Compose設定
+├── docker-compose.ci.yml   # CI用Docker Compose設定
+├── run_tests.sh           # ローカルテスト実行スクリプト
 └── README.md              # このファイル
 ```
 
@@ -69,7 +79,7 @@ cd todo-app
 
 ### 2. アプリケーションの起動
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ### 3. アクセス
@@ -79,7 +89,7 @@ docker-compose up -d
 
 ## 🧪 テスト
 
-### 全テストの実行
+### ローカルでの全テスト実行
 ```bash
 ./run_tests.sh
 ```
@@ -88,18 +98,55 @@ docker-compose up -d
 
 #### フロントエンドテスト
 ```bash
-docker-compose exec frontend npm test
+docker compose exec frontend npm test
 ```
 
 #### バックエンドユニットテスト（pytest）
 ```bash
-docker-compose exec backend python -m pytest test_main.py -v
+docker compose exec backend python -m pytest test_main.py -v
 ```
 
 #### バックエンドAPIテスト
 ```bash
-docker-compose exec backend python simple_test.py
+docker compose exec backend python simple_test.py
 ```
+
+### GitHub Actions 自動テスト
+
+このプロジェクトでは、GitHub Actionsを使用した自動テストが設定されています：
+
+#### メインCI/CDパイプライン (`.github/workflows/ci.yml`)
+- **トリガー**: `main`、`develop`ブランチへのプッシュ・プルリクエスト
+- **実行内容**:
+  - 🧪 **テストジョブ**: 全テスト（フロントエンド、バックエンドユニット、API）
+  - 🔍 **リントジョブ**: コード品質チェック（ESLint、flake8）
+  - 🔒 **セキュリティジョブ**: 脆弱性スキャン（Trivy）
+  - 🏗️ **ビルドジョブ**: Dockerイメージビルド（mainブランチのみ）
+
+#### プルリクエスト軽量チェック (`.github/workflows/pr-check.yml`)
+- **トリガー**: プルリクエスト作成・更新時
+- **実行内容**:
+  - TypeScriptコンパイルチェック
+  - ESLintによるコード品質チェック
+  - Pythonリンティング
+  - Dockerビルド確認
+  - 結果をPRにコメント（権限がある場合）
+  - ジョブサマリーに結果を出力
+
+#### テスト結果の確認
+- GitHubリポジトリの「Actions」タブで実行状況を確認
+- プルリクエストには自動的にテスト結果がコメントされます（権限がある場合）
+- ジョブサマリーでも結果を確認可能
+- カバレッジレポートはCodecovにアップロード（設定済み）
+
+#### 権限設定
+GitHub Actionsワークフローには以下の権限が設定されています：
+- **contents: read** - リポジトリの読み取り
+- **pull-requests: write** - プルリクエストへのコメント
+- **issues: write** - イシューへのコメント
+- **security-events: write** - セキュリティスキャン結果のアップロード
+
+フォークからのプルリクエストでは、セキュリティ上の理由でコメント権限が制限される場合があります。その場合でも、ジョブサマリーで結果を確認できます。
 
 ### テスト内容
 - **フロントエンド**: Reactコンポーネントのレンダリングテスト（1件）
@@ -144,24 +191,24 @@ docker-compose exec backend python simple_test.py
 ### 開発環境での起動
 ```bash
 # 開発モードで起動（ホットリロード有効）
-docker-compose up
+docker compose up
 ```
 
 ### ログの確認
 ```bash
 # 全サービスのログ
-docker-compose logs -f
+docker compose logs -f
 
 # 特定サービスのログ
-docker-compose logs -f backend
-docker-compose logs -f frontend
+docker compose logs -f backend
+docker compose logs -f frontend
 ```
 
 ### データベースの初期化
 ```bash
 # コンテナとボリュームを削除して完全にリセット
-docker-compose down -v
-docker-compose up -d
+docker compose down -v
+docker compose up -d
 ```
 
 ## 🛡️ セキュリティ
@@ -170,6 +217,29 @@ docker-compose up -d
 - bcryptによるパスワードハッシュ化
 - ユーザー別データ分離
 - CORS設定による適切なアクセス制御
+- Trivyによる脆弱性スキャン
+- 本番環境用Dockerイメージの最適化
+
+### セキュリティスキャン
+
+このプロジェクトでは、Trivyを使用してセキュリティ脆弱性をスキャンしています：
+
+#### 脆弱性の分類
+- **本番環境に影響する脆弱性**: 自動的に修正またはアラート
+- **開発時のみの脆弱性**: `.trivyignore`で除外
+  - webpack-dev-server（開発サーバーのみ）
+  - postcss（ビルド時のみ）
+  - nth-check（SVG最適化ツール）
+
+#### 本番環境の最適化
+- **バックエンド**: `requirements-prod.txt`でテスト用ライブラリを除外
+- **フロントエンド**: マルチステージビルドで開発依存関係を除外
+- **Nginx**: セキュリティヘッダーとキャッシュ最適化
+
+#### セキュリティファイル
+- `.trivyignore`: 開発時のみの脆弱性を除外
+- `Dockerfile.prod`: 本番環境用の最適化されたイメージ
+- `nginx.conf`: セキュアなNginx設定
 
 ## 📝 使用方法
 

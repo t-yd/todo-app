@@ -1,0 +1,254 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  security-events: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Verify Docker Compose
+      run: |
+        docker --version
+        docker compose version
+
+    - name: Build and start services
+      run: |
+        docker compose -f docker-compose.ci.yml up -d --build --force-recreate
+        
+    - name: Check service status
+      run: |
+        echo "=== Checking service status ==="
+        docker compose -f docker-compose.ci.yml ps
+        echo ""
+        echo "=== Checking running containers ==="
+        docker ps -a
+        
+    - name: Wait for services to be ready
+      run: |
+        echo "Waiting for services to start..."
+        sleep 90
+        
+        # Check if services are running
+        echo "=== Service status after wait ==="
+        docker compose -f docker-compose.ci.yml ps
+        
+        # Wait for MySQL to be healthy
+        echo "Waiting for MySQL to be healthy..."
+        for i in {1..30}; do
+          if docker compose -f docker-compose.ci.yml ps mysql | grep -q "healthy"; then
+            echo "MySQL is healthy"
+            break
+          fi
+          echo "Waiting for MySQL... ($i/30)"
+          sleep 5
+        done
+        
+        # Wait for backend to be ready
+        echo "Waiting for backend to be ready..."
+        for i in {1..30}; do
+          if curl -s http://localhost:8000/health > /dev/null; then
+            echo "Backend is ready"
+            break
+          fi
+          echo "Waiting for backend... ($i/30)"
+          sleep 3
+        done
+        
+        # Wait for frontend to be ready with more attempts
+        echo "Waiting for frontend to be ready..."
+        for i in {1..60}; do
+          if curl -s http://localhost:3000 > /dev/null; then
+            echo "Frontend is ready"
+            break
+          fi
+          echo "Waiting for frontend... ($i/60)"
+          sleep 5
+        done
+
+    - name: Show service logs
+      if: failure()
+      run: |
+        echo "=== Backend logs ==="
+        docker compose -f docker-compose.ci.yml logs backend
+        echo "=== Frontend logs ==="
+        docker compose -f docker-compose.ci.yml logs frontend
+        echo "=== MySQL logs ==="
+        docker compose -f docker-compose.ci.yml logs mysql
+
+    - name: Check services before tests
+      run: |
+        echo "=== Final service status check ==="
+        docker compose -f docker-compose.ci.yml ps
+        echo ""
+        echo "=== Container health ==="
+        docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+        echo ""
+        echo "=== Frontend service logs (last 100 lines) ==="
+        docker compose -f docker-compose.ci.yml logs --tail=100 frontend
+        echo ""
+        echo "=== Backend service logs (last 50 lines) ==="
+        docker compose -f docker-compose.ci.yml logs --tail=50 backend
+
+    - name: Run Backend Unit Tests (pytest)
+      run: |
+        docker compose -f docker-compose.ci.yml exec -T backend python -m pytest test_main.py -v --tb=short
+
+    - name: Run Backend API Tests
+      run: |
+        docker compose -f docker-compose.ci.yml exec -T backend python simple_test.py
+
+    - name: Run Frontend Tests
+      run: |
+        # Check if frontend service is running before executing tests
+        echo "=== Checking frontend service status ==="
+        docker compose -f docker-compose.ci.yml ps frontend
+        
+        # Get container ID for frontend service
+        FRONTEND_CONTAINER_ID=$(docker compose -f docker-compose.ci.yml ps -q frontend)
+        echo "Frontend container ID: $FRONTEND_CONTAINER_ID"
+        
+        if [ -z "$FRONTEND_CONTAINER_ID" ]; then
+          echo "❌ Frontend container not found"
+          exit 1
+        fi
+        
+        # Check container status
+        CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' $FRONTEND_CONTAINER_ID)
+        echo "Container status: $CONTAINER_STATUS"
+        
+        if [ "$CONTAINER_STATUS" != "running" ]; then
+          echo "❌ Frontend service is not running. Status: $CONTAINER_STATUS"
+          echo "=== Frontend container logs ==="
+          docker logs $FRONTEND_CONTAINER_ID
+          echo "=== Container inspect ==="
+          docker inspect $FRONTEND_CONTAINER_ID
+          exit 1
+        fi
+        
+        echo "✅ Frontend service is running. Executing tests..."
+        docker compose -f docker-compose.ci.yml exec -T frontend npm run test:ci
+
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./frontend/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+      continue-on-error: true
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker compose -f docker-compose.ci.yml down -v
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm install
+
+    - name: Run ESLint
+      run: |
+        cd frontend
+        npm run lint
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        pip install -r requirements.txt
+
+    - name: Run Python linting (flake8)
+      run: |
+        cd backend
+        pip install flake8
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        trivyignores: '.trivyignore'
+      continue-on-error: true
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+      continue-on-error: true
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [test, lint]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Verify Docker Compose
+      run: |
+        docker --version
+        docker compose version
+
+    - name: Build Docker images
+      run: |
+        docker compose -f docker-compose.ci.yml build --no-cache
+
+    - name: Test Docker images
+      run: |
+        docker compose -f docker-compose.ci.yml up -d --force-recreate
+        sleep 45
+        
+        # Quick smoke test
+        curl -f http://localhost:8000/health
+        curl -f http://localhost:3000
+        
+        docker compose -f docker-compose.ci.yml down 
