@@ -32,12 +32,36 @@ jobs:
       run: |
         docker compose -f docker-compose.ci.yml up -d --build --force-recreate
         
+    - name: Check service status
+      run: |
+        echo "=== Checking service status ==="
+        docker compose -f docker-compose.ci.yml ps
+        echo ""
+        echo "=== Checking running containers ==="
+        docker ps -a
+        
     - name: Wait for services to be ready
       run: |
         echo "Waiting for services to start..."
-        sleep 45
+        sleep 60
+        
+        # Check if services are running
+        echo "=== Service status after wait ==="
+        docker compose -f docker-compose.ci.yml ps
+        
+        # Wait for MySQL to be healthy
+        echo "Waiting for MySQL to be healthy..."
+        for i in {1..30}; do
+          if docker compose -f docker-compose.ci.yml ps mysql | grep -q "healthy"; then
+            echo "MySQL is healthy"
+            break
+          fi
+          echo "Waiting for MySQL... ($i/30)"
+          sleep 5
+        done
         
         # Wait for backend to be ready
+        echo "Waiting for backend to be ready..."
         for i in {1..30}; do
           if curl -s http://localhost:8000/health > /dev/null; then
             echo "Backend is ready"
@@ -48,6 +72,7 @@ jobs:
         done
         
         # Wait for frontend to be ready
+        echo "Waiting for frontend to be ready..."
         for i in {1..30}; do
           if curl -s http://localhost:3000 > /dev/null; then
             echo "Frontend is ready"
@@ -67,6 +92,17 @@ jobs:
         echo "=== MySQL logs ==="
         docker compose -f docker-compose.ci.yml logs mysql
 
+    - name: Check services before tests
+      run: |
+        echo "=== Final service status check ==="
+        docker compose -f docker-compose.ci.yml ps
+        echo ""
+        echo "=== Container health ==="
+        docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+        echo ""
+        echo "=== Frontend service logs (last 50 lines) ==="
+        docker compose -f docker-compose.ci.yml logs --tail=50 frontend
+
     - name: Run Backend Unit Tests (pytest)
       run: |
         docker compose -f docker-compose.ci.yml exec -T backend python -m pytest test_main.py -v --tb=short
@@ -77,7 +113,20 @@ jobs:
 
     - name: Run Frontend Tests
       run: |
-        docker compose -f docker-compose.ci.yml exec -T frontend npm test -- --watchAll=false --coverage
+        # Check if frontend service is running before executing tests
+        echo "=== Checking frontend service status ==="
+        docker compose -f docker-compose.ci.yml ps frontend
+        
+        if ! docker compose -f docker-compose.ci.yml ps frontend | grep -q "Up"; then
+          echo "❌ Frontend service is not running. Checking logs..."
+          docker compose -f docker-compose.ci.yml logs frontend
+          echo "=== Container inspect ==="
+          docker inspect $(docker compose -f docker-compose.ci.yml ps -q frontend) || echo "Container not found"
+          exit 1
+        fi
+        
+        echo "✅ Frontend service is running. Executing tests..."
+        docker compose -f docker-compose.ci.yml exec -T frontend npm run test:ci
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
