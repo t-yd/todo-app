@@ -146,6 +146,7 @@ jobs:
         scan-ref: '.'
         format: 'sarif'
         output: 'trivy-results.sarif'
+        trivyignores: '.trivyignore'
       continue-on-error: true
 
     - name: Upload Trivy scan results to GitHub Security tab
