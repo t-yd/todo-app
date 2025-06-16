@@ -43,7 +43,7 @@ jobs:
     - name: Wait for services to be ready
       run: |
         echo "Waiting for services to start..."
-        sleep 60
+        sleep 90
         
         # Check if services are running
         echo "=== Service status after wait ==="
@@ -71,15 +71,15 @@ jobs:
           sleep 3
         done
         
-        # Wait for frontend to be ready
+        # Wait for frontend to be ready with more attempts
         echo "Waiting for frontend to be ready..."
-        for i in {1..30}; do
+        for i in {1..60}; do
           if curl -s http://localhost:3000 > /dev/null; then
             echo "Frontend is ready"
             break
           fi
-          echo "Waiting for frontend... ($i/30)"
-          sleep 3
+          echo "Waiting for frontend... ($i/60)"
+          sleep 5
         done
 
     - name: Show service logs
@@ -100,8 +100,11 @@ jobs:
         echo "=== Container health ==="
         docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
         echo ""
-        echo "=== Frontend service logs (last 50 lines) ==="
-        docker compose -f docker-compose.ci.yml logs --tail=50 frontend
+        echo "=== Frontend service logs (last 100 lines) ==="
+        docker compose -f docker-compose.ci.yml logs --tail=100 frontend
+        echo ""
+        echo "=== Backend service logs (last 50 lines) ==="
+        docker compose -f docker-compose.ci.yml logs --tail=50 backend
 
     - name: Run Backend Unit Tests (pytest)
       run: |
@@ -117,11 +120,25 @@ jobs:
         echo "=== Checking frontend service status ==="
         docker compose -f docker-compose.ci.yml ps frontend
         
-        if ! docker compose -f docker-compose.ci.yml ps frontend | grep -q "Up"; then
-          echo "❌ Frontend service is not running. Checking logs..."
-          docker compose -f docker-compose.ci.yml logs frontend
+        # Get container ID for frontend service
+        FRONTEND_CONTAINER_ID=$(docker compose -f docker-compose.ci.yml ps -q frontend)
+        echo "Frontend container ID: $FRONTEND_CONTAINER_ID"
+        
+        if [ -z "$FRONTEND_CONTAINER_ID" ]; then
+          echo "❌ Frontend container not found"
+          exit 1
+        fi
+        
+        # Check container status
+        CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' $FRONTEND_CONTAINER_ID)
+        echo "Container status: $CONTAINER_STATUS"
+        
+        if [ "$CONTAINER_STATUS" != "running" ]; then
+          echo "❌ Frontend service is not running. Status: $CONTAINER_STATUS"
+          echo "=== Frontend container logs ==="
+          docker logs $FRONTEND_CONTAINER_ID
           echo "=== Container inspect ==="
-          docker inspect $(docker compose -f docker-compose.ci.yml ps -q frontend) || echo "Container not found"
+          docker inspect $FRONTEND_CONTAINER_ID
           exit 1
         fi
         

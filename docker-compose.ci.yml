@@ -27,6 +27,9 @@ services:
       - REACT_APP_API_URL=http://localhost:8000
       - CI=true
       - WATCHPACK_POLLING=true
+      - WDS_SOCKET_HOST=localhost
+      - WDS_SOCKET_PORT=3000
+      - FAST_REFRESH=false
     stdin_open: true
     tty: true
     healthcheck:
