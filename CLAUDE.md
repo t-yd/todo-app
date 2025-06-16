@@ -39,8 +39,8 @@ docker compose exec backend python -m pytest test_main.py::TestAuth -v
 # Frontend linting
 docker compose exec frontend npm run lint
 
-# Backend linting (flake8 configuration in .flake8)
-docker compose exec backend flake8 .
+# Backend linting (flake8 not installed in container, but configured in .flake8)
+# Linting is performed in GitHub Actions CI pipeline
 ```
 
 ### Database Operations
@@ -107,7 +107,8 @@ Each user's data is completely isolated. Projects cascade-delete their todos whe
 
 ### Database Changes
 - Models are defined in `backend/database.py` using SQLAlchemy
-- No formal migration system - for development, reset with `docker compose down -v`
+- No migration system currently implemented - for development, reset with `docker compose down -v`
+- Alembic is included in dependencies but not actively used
 - All foreign key relationships use proper constraints and cascade deletes
 
 ### Component Communication
@@ -124,4 +125,5 @@ Each user's data is completely isolated. Projects cascade-delete their todos whe
 ## Environment Variables
 - `REACT_APP_API_URL`: Frontend API endpoint (default: http://localhost:8000)
 - Backend uses Docker Compose environment variables for MySQL connection
-- No `.env` file - configuration via Docker Compose and build-time variables
+- No `.env` file in repository - configuration via Docker Compose and build-time variables
+- `env.example` file provided as template
