@@ -1,13 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { Todo, TodoCreate, TodoUpdate, Project, User } from './types/todo';
-import { todoApi, projectApi, authApi } from './services/api';
-import { TodoItem } from './components/TodoItem';
-import { TodoForm } from './components/TodoForm';
+import React, { useState, useEffect, useCallback } from 'react';
+import './App.css';
 import Login from './components/Login';
 import Register from './components/Register';
-import './App.css';
+import { TodoForm } from './components/TodoForm';
+import { TodoItem } from './components/TodoItem';
 import ProjectManager from './components/ProjectManager';
-import { ProjectCreate, ProjectUpdate } from './types/todo';
+import { authApi, todoApi, projectApi } from './services/api';
+import { 
+  Todo, 
+  TodoCreate, 
+  TodoUpdate, 
+  User, 
+  Project, 
+  ProjectCreate, 
+  ProjectUpdate 
+} from './types/todo';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -40,41 +47,35 @@ function App() {
     checkAuth();
   }, []);
 
-  // Todoリストを取得
-  const fetchTodos = async () => {
+  const fetchTodos = useCallback(async () => {
     if (!isAuthenticated) return;
     
     try {
       setLoading(true);
       const fetchedTodos = await todoApi.getTodos(
         selectedProjectId || undefined,
-        showCompleted ? undefined : false
+        undefined
       );
       setTodos(fetchedTodos);
-    } catch (err) {
-      setError('Todoの取得に失敗しました');
-      console.error('Error fetching todos:', err);
+    } catch (error) {
+      console.error('Todo取得エラー:', error);
+      setError('タスクの取得に失敗しました');
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAuthenticated, selectedProjectId]);
 
-  // プロジェクトリストを取得
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     if (!isAuthenticated) return;
     
     try {
       const fetchedProjects = await projectApi.getProjects();
       setProjects(fetchedProjects);
-      
-      // 初期選択は全プロジェクト表示
-      if (fetchedProjects.length > 0 && selectedProjectId === null) {
-        // 何も選択しない（全プロジェクト表示）
-      }
-    } catch (err) {
-      console.error('Error fetching projects:', err);
+    } catch (error) {
+      console.error('プロジェクト取得エラー:', error);
+      setError('プロジェクトの取得に失敗しました');
     }
-  };
+  }, [isAuthenticated]);
 
   // 新しいTodoを作成
   const handleCreateTodo = async (todoData: TodoCreate) => {
@@ -134,14 +135,14 @@ function App() {
     if (isAuthenticated) {
       fetchProjects();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchProjects]);
 
   // プロジェクト変更時のTodo読み込み
   useEffect(() => {
     if (isAuthenticated) {
       fetchTodos();
     }
-  }, [isAuthenticated, selectedProjectId, showCompleted]);
+  }, [isAuthenticated, selectedProjectId, showCompleted, fetchTodos]);
 
   // プロジェクト管理関数
   const handleProjectCreate = async (projectData: ProjectCreate) => {
